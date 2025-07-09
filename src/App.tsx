@@ -1,438 +1,427 @@
 import { useState } from 'react';
 
-const IEPGoalGeneratorWorkflow = () => {
-  const [currentStep, setCurrentStep] = useState(1);
+const IEPGoalGenerator = () => {
   const [formData, setFormData] = useState({
-    studentInfo: {
-      name: '',
-      grade: '',
-      disability: '',
-      currentLevel: ''
-    },
+    studentName: '',
+    grade: '',
+    disability: '',
     goalArea: '',
-    assessmentData: '',
+    template: '',
     presentLevel: '',
-    targetSkill: '',
-    conditions: '',
-    criteria: ''
+    generatedGoal: ''
   });
 
-  const [generatedGoals, setGeneratedGoals] = useState<string[]>([]);
-
-  const steps = [
-    { id: 1, title: "Student Profile" },
-    { id: 2, title: "Goal Area" },
-    { id: 3, title: "Assessment Data" },
-    { id: 4, title: "Present Level" },
-    { id: 5, title: "Target Skill" },
-    { id: 6, title: "Generate Goals" }
-  ];
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [showCopiedToast, setShowCopiedToast] = useState(false);
+  const [complianceWarnings, setComplianceWarnings] = useState<string[]>([]);
 
   const goalAreas = [
-    { id: 'reading', label: 'Reading', description: 'Decoding, comprehension, fluency' },
-    { id: 'math', label: 'Math', description: 'Computation, problem-solving, concepts' },
-    { id: 'writing', label: 'Written Expression', description: 'Grammar, composition, mechanics' },
-    { id: 'behavior', label: 'Behavior', description: 'Social skills, self-regulation, compliance' },
-    { id: 'communication', label: 'Communication', description: 'Speech, language, social communication' },
-    { id: 'adaptive', label: 'Adaptive/Life Skills', description: 'Self-care, vocational, independent living' },
-    { id: 'motor', label: 'Motor Skills', description: 'Fine motor, gross motor, sensory' },
-    { id: 'transition', label: 'Transition', description: 'Post-secondary planning, job skills' }
+    'Reading',
+    'Math',
+    'Written Expression',
+    'Behavior/Self-Management',
+    'Communication',
+    'Social Skills',
+    'Adaptive/Life Skills',
+    'Motor Skills',
+    'Transition'
   ];
 
-  const sampleGoals: { [key: string]: string[] } = {
-    reading: [
-      "Given a 3rd grade level text and graphic organizer, [Student] will identify the main idea and 3 supporting details with 80% accuracy across 4 out of 5 consecutive trials as measured by teacher data collection by [Date].",
-      "When presented with 20 sight words at the 2nd grade level, [Student] will read the words correctly within 3 seconds per word with 90% accuracy across 3 consecutive sessions as measured by curriculum-based assessments by [Date].",
-      "Given a reading passage at instructional level with pre-reading strategies, [Student] will answer 4 out of 5 comprehension questions (literal and inferential) with 80% accuracy across 4 consecutive trials as measured by teacher observation and data collection by [Date]."
+  const templates = {
+    'Behavior/Self-Management': [
+      'On-task behavior',
+      'Following directions',
+      'Self-regulation strategies',
+      'Appropriate social interactions',
+      'Completing assignments independently'
     ],
-    math: [
-      "Given manipulatives and visual supports, [Student] will solve 2-digit addition problems with regrouping with 80% accuracy across 4 out of 5 consecutive trials as measured by teacher data collection by [Date].",
-      "When presented with word problems involving time and money, [Student] will identify the relevant information and solve the problem with 75% accuracy across 3 consecutive sessions as measured by curriculum-based assessments by [Date].",
-      "Given a hundreds chart and verbal prompts, [Student] will skip count by 2s, 5s, and 10s to 100 with 90% accuracy across 4 consecutive trials as measured by teacher observation by [Date]."
+    'Social Skills': [
+      'Turn-taking in conversation',
+      'Peer interaction',
+      'Conflict resolution',
+      'Social problem-solving',
+      'Maintaining friendships'
     ],
-    behavior: [
-      "When experiencing frustration in academic or social situations, [Student] will use appropriate coping strategies (deep breathing, requesting a break, asking for help) instead of disruptive behaviors in 8 out of 10 opportunities across 5 consecutive school days as measured by teacher data collection by [Date].",
-      "During structured activities, [Student] will remain in assigned area and follow adult directions within 30 seconds of initial request with 85% accuracy across 4 out of 5 consecutive sessions as measured by teacher observation by [Date].",
-      "In social interactions with peers, [Student] will initiate appropriate conversation starters and maintain topic for 3 exchanges with 70% accuracy across 3 consecutive weeks as measured by teacher data collection by [Date]."
-    ],
-    writing: [
-      "Given a writing prompt and graphic organizer, [Student] will write a 5-sentence paragraph with topic sentence, 3 supporting details, and conclusion sentence with 80% accuracy across 4 out of 5 consecutive trials as measured by teacher data collection by [Date].",
-      "When completing written assignments, [Student] will use proper capitalization and punctuation in sentences with 75% accuracy across 3 consecutive sessions as measured by curriculum-based assessments by [Date]."
-    ],
-    communication: [
-      "During structured conversation activities, [Student] will maintain eye contact and respond appropriately to social questions in 8 out of 10 opportunities as measured by teacher data collection by [Date].",
-      "Given visual supports, [Student] will use complete sentences to express wants and needs in 85% of opportunities across 4 consecutive sessions as measured by speech-language pathologist observation by [Date]."
-    ],
-    adaptive: [
-      "During daily living skills instruction, [Student] will independently complete a 3-step personal hygiene routine with 90% accuracy across 5 consecutive trials as measured by teacher observation by [Date].",
-      "Given visual schedule and minimal prompting, [Student] will transition between activities within 2 minutes in 8 out of 10 opportunities as measured by teacher data collection by [Date]."
-    ],
-    motor: [
-      "During fine motor activities, [Student] will use appropriate pencil grip and write letters within designated lines with 80% accuracy across 4 out of 5 consecutive trials as measured by occupational therapist observation by [Date].",
-      "Given gross motor activities, [Student] will demonstrate bilateral coordination skills by completing 5 jumping jacks with proper form in 85% of opportunities as measured by physical therapist data collection by [Date]."
-    ],
-    transition: [
-      "During career exploration activities, [Student] will identify 3 personal strengths and how they relate to potential job opportunities with 80% accuracy across 4 consecutive sessions as measured by transition coordinator assessment by [Date].",
-      "Given community-based instruction, [Student] will demonstrate appropriate social skills in public settings by greeting others and using polite language in 9 out of 10 opportunities as measured by teacher observation by [Date]."
+    'Transition': [
+      'Self-advocacy skills',
+      'Job readiness',
+      'Independent living skills',
+      'Post-secondary planning',
+      'Community navigation'
     ]
   };
 
-  const handleInputChange = (section: string, field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [section]: {
-        ...(prev as any)[section],
-        [field]: value
+  const sampleGoals = {
+    'Reading': "Given a {grade} grade level text and graphic organizer, {student} will identify the main idea and 3 supporting details with 80% accuracy across 4 out of 5 consecutive trials as measured by teacher data collection by {date}.",
+    'Math': "Given manipulatives and visual supports, {student} will solve 2-digit addition problems with regrouping with 80% accuracy across 4 out of 5 consecutive trials as measured by teacher data collection by {date}.",
+    'Written Expression': "Given a writing prompt and graphic organizer, {student} will write a 5-sentence paragraph with topic sentence, 3 supporting details, and conclusion sentence with 80% accuracy across 4 out of 5 consecutive trials as measured by teacher data collection by {date}.",
+    'Behavior/Self-Management': "When experiencing frustration in academic or social situations, {student} will use appropriate coping strategies (deep breathing, requesting a break, asking for help) instead of disruptive behaviors in 8 out of 10 opportunities across 5 consecutive school days as measured by teacher data collection by {date}.",
+    'Communication': "During structured conversation activities, {student} will maintain eye contact and respond appropriately to social questions in 8 out of 10 opportunities as measured by teacher data collection by {date}.",
+    'Social Skills': "In social interactions with peers, {student} will initiate appropriate conversation starters and maintain topic for 3 exchanges with 70% accuracy across 3 consecutive weeks as measured by teacher data collection by {date}.",
+    'Adaptive/Life Skills': "During daily living skills instruction, {student} will independently complete a 3-step personal hygiene routine with 90% accuracy across 5 consecutive trials as measured by teacher observation by {date}.",
+    'Motor Skills': "During fine motor activities, {student} will use appropriate pencil grip and write letters within designated lines with 80% accuracy across 4 out of 5 consecutive trials as measured by occupational therapist observation by {date}.",
+    'Transition': "During career exploration activities, {student} will identify 3 personal strengths and how they relate to potential job opportunities with 80% accuracy across 4 consecutive sessions as measured by transition coordinator assessment by {date}."
+  };
+
+  const checkCompliance = (goalText: string) => {
+    const warnings: string[] = [];
+    
+    // Check for percentage/accuracy criteria
+    const hasPercentage = /\d+%/.test(goalText);
+    const hasAccuracy = /accuracy|correct/.test(goalText.toLowerCase());
+    if (!hasPercentage && !hasAccuracy) {
+      warnings.push("Goal may not be measurable—add a percentage or accuracy criteria");
+    }
+
+    // Check for time frame
+    const hasTimeFrame = /\d+\s+(day|week|month|trial|session|consecutive)/.test(goalText.toLowerCase());
+    if (!hasTimeFrame) {
+      warnings.push("Goal may be missing time frame—add number of trials, sessions, or days");
+    }
+
+    // Check for measurement method
+    const hasMeasurement = /(measured by|as evidenced by|data collection|observation|assessment)/.test(goalText.toLowerCase());
+    if (!hasMeasurement) {
+      warnings.push("Goal may be missing measurement method—add 'as measured by...'");
+    }
+
+    // Check for baseline
+    const hasBaseline = /current|baseline|present/.test(goalText.toLowerCase());
+    if (!hasBaseline && formData.presentLevel && !goalText.includes(formData.presentLevel.slice(0, 20))) {
+      warnings.push("Consider referencing current performance level in goal");
+    }
+
+    setComplianceWarnings(warnings);
+  };
+
+  const generateGoal = () => {
+    if (!formData.goalArea) return;
+    
+    setIsGenerating(true);
+    
+    // Simulate AI processing
+    setTimeout(() => {
+      let baseGoal = sampleGoals[formData.goalArea as keyof typeof sampleGoals] || 
+                     "Given appropriate supports, {student} will demonstrate improved skills in {area} with 80% accuracy across 4 out of 5 consecutive trials as measured by teacher data collection by {date}.";
+      
+      // Customize based on form data
+      const currentDate = new Date();
+      const futureDate = new Date(currentDate.setMonth(currentDate.getMonth() + 6));
+      
+      let customizedGoal = baseGoal
+        .replace('{student}', formData.studentName || '[Student Name]')
+        .replace('{grade}', formData.grade || '[Grade Level]')
+        .replace('{area}', formData.goalArea.toLowerCase())
+        .replace('{date}', futureDate.toLocaleDateString());
+
+      // If there's a present level, try to incorporate it
+      if (formData.presentLevel) {
+        // Simple customization based on present level content
+        if (formData.presentLevel.toLowerCase().includes('struggle')) {
+          customizedGoal = customizedGoal.replace('80%', '70%');
+        }
+        if (formData.presentLevel.toLowerCase().includes('independent')) {
+          customizedGoal = customizedGoal.replace('80%', '90%');
+        }
       }
-    }));
+
+      setFormData(prev => ({ ...prev, generatedGoal: customizedGoal }));
+      checkCompliance(customizedGoal);
+      setIsGenerating(false);
+    }, 1500);
   };
 
-  const handleDirectChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(formData.generatedGoal);
+    setShowCopiedToast(true);
+    setTimeout(() => setShowCopiedToast(false), 2000);
   };
 
-  const generateGoals = () => {
-    const goals = sampleGoals[formData.goalArea] || [];
-    setGeneratedGoals(goals);
-    setCurrentStep(6);
+  const handleChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Auto-generate when key fields are filled
+    if ((field === 'goalArea' || field === 'presentLevel') && value && formData.goalArea) {
+      setTimeout(generateGoal, 500);
+    }
   };
 
-  // Inline styles
+  // Styles
   const containerStyle: React.CSSProperties = {
-    maxWidth: '1200px',
+    maxWidth: '1400px',
     margin: '0 auto',
     padding: '24px',
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#f8fafc',
     minHeight: '100vh',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
   };
 
-  const cardStyle: React.CSSProperties = {
-    backgroundColor: 'white',
-    borderRadius: '8px',
-    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-    padding: '24px'
-  };
-
   const headerStyle: React.CSSProperties = {
+    textAlign: 'center',
     marginBottom: '32px'
   };
 
   const titleStyle: React.CSSProperties = {
-    fontSize: '24px',
+    fontSize: '28px',
     fontWeight: '700',
-    color: '#1f2937',
+    color: '#1e293b',
     marginBottom: '8px'
   };
 
   const subtitleStyle: React.CSSProperties = {
-    color: '#6b7280'
+    color: '#64748b',
+    fontSize: '16px'
   };
 
-  const progressContainerStyle: React.CSSProperties = {
-    marginBottom: '32px'
+  const mainContentStyle: React.CSSProperties = {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '24px',
+    marginBottom: '24px'
   };
 
-  const stepsContainerStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: '16px',
-    flexWrap: 'wrap',
-    gap: '8px'
-  };
-
-  const stepStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center'
-  };
-
-  const stepNumberStyle = (isActive: boolean): React.CSSProperties => ({
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '40px',
-    height: '40px',
-    borderRadius: '50%',
-    backgroundColor: isActive ? '#3b82f6' : '#e5e7eb',
-    color: isActive ? 'white' : '#6b7280',
-    fontWeight: '600'
-  });
-
-  const stepTitleStyle = (isActive: boolean): React.CSSProperties => ({
-    marginLeft: '8px',
-    fontSize: '14px',
-    fontWeight: '600',
-    color: isActive ? '#2563eb' : '#6b7280'
-  });
-
-  const progressBarStyle: React.CSSProperties = {
-    width: '100%',
-    backgroundColor: '#e5e7eb',
-    borderRadius: '4px',
-    height: '8px'
-  };
-
-  const progressFillStyle: React.CSSProperties = {
-    backgroundColor: '#3b82f6',
-    height: '8px',
-    borderRadius: '4px',
-    transition: 'width 0.3s ease',
-    width: `${(currentStep / steps.length) * 100}%`
-  };
-
-  const contentStyle: React.CSSProperties = {
-    minHeight: '400px',
-    marginBottom: '32px'
+  const panelStyle: React.CSSProperties = {
+    backgroundColor: 'white',
+    borderRadius: '12px',
+    padding: '24px',
+    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
   };
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
     padding: '12px',
     border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    fontSize: '16px'
+    borderRadius: '8px',
+    fontSize: '14px',
+    marginBottom: '16px'
   };
 
-  const gridStyle: React.CSSProperties = {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-    gap: '16px'
+  const textareaStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '16px',
+    border: '1px solid #d1d5db',
+    borderRadius: '8px',
+    fontSize: '14px',
+    minHeight: '200px',
+    resize: 'vertical' as const,
+    fontFamily: 'inherit'
   };
 
   const buttonStyle: React.CSSProperties = {
     backgroundColor: '#3b82f6',
     color: 'white',
     padding: '12px 24px',
-    borderRadius: '6px',
+    borderRadius: '8px',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '16px',
+    fontWeight: '600',
+    marginRight: '12px'
+  };
+
+  const copyButtonStyle: React.CSSProperties = {
+    backgroundColor: '#10b981',
+    color: 'white',
+    padding: '12px 24px',
+    borderRadius: '8px',
     border: 'none',
     cursor: 'pointer',
     fontSize: '16px',
     fontWeight: '600'
   };
 
-  const secondaryButtonStyle: React.CSSProperties = {
-    backgroundColor: 'transparent',
-    color: '#6b7280',
-    padding: '8px 16px',
-    border: 'none',
-    cursor: 'pointer',
-    fontSize: '16px'
+  const warningStyle: React.CSSProperties = {
+    backgroundColor: '#fef3c7',
+    border: '1px solid #f59e0b',
+    borderRadius: '8px',
+    padding: '12px',
+    marginTop: '16px'
   };
 
-  const goalAreaStyle = (isSelected: boolean): React.CSSProperties => ({
-    padding: '16px',
-    border: `2px solid ${isSelected ? '#3b82f6' : '#e5e7eb'}`,
+  const toastStyle: React.CSSProperties = {
+    position: 'fixed',
+    top: '20px',
+    right: '20px',
+    backgroundColor: '#10b981',
+    color: 'white',
+    padding: '12px 24px',
     borderRadius: '8px',
-    cursor: 'pointer',
-    backgroundColor: isSelected ? '#eff6ff' : 'white',
-    transition: 'all 0.2s ease'
-  });
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+    zIndex: 1000,
+    fontWeight: '600'
+  };
 
-  const goalCardStyle: React.CSSProperties = {
-    backgroundColor: '#f9fafb',
-    padding: '16px',
-    border: '1px solid #e5e7eb',
+  const privacyBannerStyle: React.CSSProperties = {
+    backgroundColor: '#f1f5f9',
+    border: '1px solid #cbd5e1',
     borderRadius: '8px',
-    marginBottom: '16px'
+    padding: '16px',
+    textAlign: 'center',
+    fontSize: '14px',
+    color: '#475569'
   };
 
   return (
     <div style={containerStyle}>
-      <div style={cardStyle}>
-        <div style={headerStyle}>
-          <h1 style={titleStyle}>IEP Goal Generator</h1>
-          <p style={subtitleStyle}>AI-powered tool to create legally compliant, measurable IEP goals</p>
+      {showCopiedToast && (
+        <div style={toastStyle}>
+          ✓ Copied to clipboard!
         </div>
+      )}
 
-        {/* Progress Steps */}
-        <div style={progressContainerStyle}>
-          <div style={stepsContainerStyle}>
-            {steps.map((step, index) => (
-              <div key={step.id} style={stepStyle}>
-                <div style={stepNumberStyle(currentStep >= step.id)}>
-                  {step.id}
-                </div>
-                <div style={stepTitleStyle(currentStep >= step.id)}>
-                  {step.title}
-                </div>
-                {index < steps.length - 1 && (
-                  <span style={{ color: '#9ca3af', margin: '0 8px' }}>→</span>
-                )}
-              </div>
+      <div style={headerStyle}>
+        <h1 style={titleStyle}>IEP Goal Generator</h1>
+        <p style={subtitleStyle}>Generate legally compliant, measurable IEP goals in seconds</p>
+      </div>
+
+      {/* Quick Setup */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <input
+          type="text"
+          placeholder="Student Name"
+          style={inputStyle}
+          value={formData.studentName}
+          onChange={(e) => handleChange('studentName', e.target.value)}
+        />
+        <select
+          style={inputStyle}
+          value={formData.grade}
+          onChange={(e) => handleChange('grade', e.target.value)}
+        >
+          <option value="">Select Grade</option>
+          <option value="K">Kindergarten</option>
+          <option value="1st">1st Grade</option>
+          <option value="2nd">2nd Grade</option>
+          <option value="3rd">3rd Grade</option>
+          <option value="4th">4th Grade</option>
+          <option value="5th">5th Grade</option>
+          <option value="6th">6th Grade</option>
+          <option value="7th">7th Grade</option>
+          <option value="8th">8th Grade</option>
+          <option value="9th">9th Grade</option>
+          <option value="10th">10th Grade</option>
+          <option value="11th">11th Grade</option>
+          <option value="12th">12th Grade</option>
+        </select>
+        <select
+          style={inputStyle}
+          value={formData.goalArea}
+          onChange={(e) => handleChange('goalArea', e.target.value)}
+        >
+          <option value="">Select Goal Area</option>
+          {goalAreas.map(area => (
+            <option key={area} value={area}>{area}</option>
+          ))}
+        </select>
+        {formData.goalArea && templates[formData.goalArea as keyof typeof templates] && (
+          <select
+            style={inputStyle}
+            value={formData.template}
+            onChange={(e) => handleChange('template', e.target.value)}
+          >
+            <option value="">Choose Template (Optional)</option>
+            {templates[formData.goalArea as keyof typeof templates].map(template => (
+              <option key={template} value={template}>{template}</option>
             ))}
+          </select>
+        )}
+      </div>
+
+      {/* Main Content */}
+      <div style={mainContentStyle}>
+        {/* Left Panel - Input */}
+        <div style={panelStyle}>
+          <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', color: '#1e293b' }}>
+            Present Level of Performance
+          </h3>
+          <textarea
+            style={textareaStyle}
+            placeholder="Paste or type the student's current performance level here. Include:
+• What the student can currently do
+• Specific challenges or areas of need
+• Assessment data or observations
+• Strengths to build upon
+
+Example: 'Currently reads 25 sight words with 60% accuracy. Shows strong phonemic awareness but struggles with blending sounds in CVC words. Requires visual supports and repeated practice to retain new vocabulary.'"
+            value={formData.presentLevel}
+            onChange={(e) => handleChange('presentLevel', e.target.value)}
+          />
+          
+          <div style={{ marginTop: '16px' }}>
+            <button 
+              onClick={generateGoal} 
+              style={{
+                ...buttonStyle,
+                opacity: !formData.goalArea ? 0.5 : 1,
+                cursor: !formData.goalArea ? 'not-allowed' : 'pointer'
+              }}
+              disabled={!formData.goalArea || isGenerating}
+            >
+              {isGenerating ? 'Generating...' : 'Generate Goal'}
+            </button>
           </div>
-          <div style={progressBarStyle}>
-            <div style={progressFillStyle} />
+        </div>
+
+        {/* Right Panel - Output */}
+        <div style={panelStyle}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1e293b' }}>
+              Generated SMART Goal
+            </h3>
+            {formData.generatedGoal && (
+              <button onClick={copyToClipboard} style={copyButtonStyle}>
+                📋 Copy Goal
+              </button>
+            )}
           </div>
-        </div>
-
-        {/* Step Content */}
-        <div style={contentStyle}>
-          {currentStep === 1 && (
-            <div>
-              <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px' }}>Student Profile</h3>
-              <div style={gridStyle}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>
-                    Student Name
-                  </label>
-                  <input
-                    type="text"
-                    style={inputStyle}
-                    value={formData.studentInfo.name}
-                    onChange={(e) => handleInputChange('studentInfo', 'name', e.target.value)}
-                    placeholder="Enter student name"
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>
-                    Grade Level
-                  </label>
-                  <select
-                    style={inputStyle}
-                    value={formData.studentInfo.grade}
-                    onChange={(e) => handleInputChange('studentInfo', 'grade', e.target.value)}
-                  >
-                    <option value="">Select grade</option>
-                    <option value="K">Kindergarten</option>
-                    <option value="1">1st Grade</option>
-                    <option value="2">2nd Grade</option>
-                    <option value="3">3rd Grade</option>
-                    <option value="4">4th Grade</option>
-                    <option value="5">5th Grade</option>
-                    <option value="6">6th Grade</option>
-                    <option value="7">7th Grade</option>
-                    <option value="8">8th Grade</option>
-                    <option value="9">9th Grade</option>
-                    <option value="10">10th Grade</option>
-                    <option value="11">11th Grade</option>
-                    <option value="12">12th Grade</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>
-                    Primary Disability
-                  </label>
-                  <select
-                    style={inputStyle}
-                    value={formData.studentInfo.disability}
-                    onChange={(e) => handleInputChange('studentInfo', 'disability', e.target.value)}
-                  >
-                    <option value="">Select disability</option>
-                    <option value="ASD">Autism Spectrum Disorder</option>
-                    <option value="ID">Intellectual Disability</option>
-                    <option value="SLD">Specific Learning Disability</option>
-                    <option value="EBD">Emotional/Behavioral Disorder</option>
-                    <option value="ADHD">ADHD</option>
-                    <option value="OHI">Other Health Impairment</option>
-                    <option value="SI">Speech Impairment</option>
-                    <option value="HI">Hearing Impairment</option>
-                    <option value="VI">Visual Impairment</option>
-                    <option value="OI">Orthopedic Impairment</option>
-                    <option value="TBI">Traumatic Brain Injury</option>
-                    <option value="MD">Multiple Disabilities</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>
-                    Current Performance Level
-                  </label>
-                  <input
-                    type="text"
-                    style={inputStyle}
-                    value={formData.studentInfo.currentLevel}
-                    onChange={(e) => handleInputChange('studentInfo', 'currentLevel', e.target.value)}
-                    placeholder="e.g., 2nd grade reading level"
-                  />
-                </div>
+          
+          <div style={{
+            minHeight: '200px',
+            padding: '16px',
+            backgroundColor: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            borderRadius: '8px',
+            fontSize: '14px',
+            lineHeight: '1.6'
+          }}>
+            {isGenerating ? (
+              <div style={{ color: '#64748b', fontStyle: 'italic' }}>
+                Generating your customized IEP goal...
               </div>
-            </div>
-          )}
-
-          {currentStep === 2 && (
-            <div>
-              <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px' }}>Select Goal Area</h3>
-              <div style={gridStyle}>
-                {goalAreas.map(area => (
-                  <div
-                    key={area.id}
-                    onClick={() => handleDirectChange('goalArea', area.id)}
-                    style={goalAreaStyle(formData.goalArea === area.id)}
-                  >
-                    <h4 style={{ fontWeight: '600', marginBottom: '4px' }}>{area.label}</h4>
-                    <p style={{ fontSize: '14px', color: '#6b7280' }}>{area.description}</p>
-                  </div>
-                ))}
+            ) : formData.generatedGoal ? (
+              <div style={{ color: '#1e293b' }}>
+                {formData.generatedGoal}
               </div>
-            </div>
-          )}
+            ) : (
+              <div style={{ color: '#94a3b8', fontStyle: 'italic' }}>
+                Select a goal area and enter present level information to generate a SMART goal.
+              </div>
+            )}
+          </div>
 
-          {currentStep === 6 && (
-            <div>
-              <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px' }}>Generated Goals</h3>
-              {generatedGoals.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '32px' }}>
-                  <button onClick={generateGoals} style={buttonStyle}>
-                    Generate Goals
-                  </button>
+          {/* Compliance Checker */}
+          {complianceWarnings.length > 0 && (
+            <div style={warningStyle}>
+              <div style={{ fontWeight: '600', color: '#92400e', marginBottom: '8px' }}>
+                ⚠️ Compliance Check
+              </div>
+              {complianceWarnings.map((warning, index) => (
+                <div key={index} style={{ fontSize: '14px', color: '#92400e', marginBottom: '4px' }}>
+                  • {warning}
                 </div>
-              ) : (
-                <div>
-                  {generatedGoals.map((goal, index) => (
-                    <div key={index} style={goalCardStyle}>
-                      <h4 style={{ fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>
-                        Goal Option {index + 1}
-                      </h4>
-                      <p style={{ color: '#374151', lineHeight: '1.6' }}>{goal}</p>
-                    </div>
-                  ))}
-                  <div style={{ backgroundColor: '#fef3c7', padding: '16px', borderRadius: '8px', marginTop: '16px' }}>
-                    <h4 style={{ fontWeight: '600', color: '#92400e', marginBottom: '8px' }}>Next Steps:</h4>
-                    <ul style={{ fontSize: '14px', color: '#92400e', paddingLeft: '20px' }}>
-                      <li>Review and customize goals for your student</li>
-                      <li>Add to IEP document with proper dates</li>
-                      <li>Set up data collection system</li>
-                      <li>Share with team members</li>
-                    </ul>
-                  </div>
-                </div>
-              )}
+              ))}
             </div>
           )}
         </div>
+      </div>
 
-        {/* Navigation */}
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <button
-            onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
-            disabled={currentStep === 1}
-            style={{
-              ...secondaryButtonStyle,
-              opacity: currentStep === 1 ? 0.5 : 1,
-              cursor: currentStep === 1 ? 'not-allowed' : 'pointer'
-            }}
-          >
-            Previous
-          </button>
-          <button
-            onClick={() => setCurrentStep(Math.min(6, currentStep + 1))}
-            disabled={currentStep === 6}
-            style={{
-              ...buttonStyle,
-              opacity: currentStep === 6 ? 0.5 : 1,
-              cursor: currentStep === 6 ? 'not-allowed' : 'pointer'
-            }}
-          >
-            Next →
-          </button>
-        </div>
+      {/* Privacy Banner */}
+      <div style={privacyBannerStyle}>
+        🔒 All text is processed transiently; nothing is stored. 
+        <a href="#" style={{ color: '#3b82f6', marginLeft: '8px' }}>FERPA Compliance Policy</a>
       </div>
     </div>
   );
 };
 
-export default IEPGoalGeneratorWorkflow;
+export default IEPGoalGenerator;
